@@ -1,80 +1,104 @@
+
 # Monitor de Queimadas INPE 🔥🌎
 
 > Projeto de Global Solution - FIAP 2025  
 > Sistema de monitoramento automático de focos de queimadas utilizando dados do INPE
 
-## 📦 Pré-requisitos
+---
 
-- [Python 3.8+](https://www.python.org/downloads/) (*marque "Add to PATH" na instalação*)
-- [Google Chrome](https://www.google.com/chrome/) instalado
-- Conexão com internet
+##  Pré-requisitos
 
-## 🚀 Instalação Passo a Passo
+- [Python 3.8+](https://www.python.org/downloads/) (*marque "Add to PATH" na instalação*)  
+- [Google Chrome](https://www.google.com/chrome/) instalado  
 
-1. **Baixe o projeto**:
+---
+
+##  Instalação Passo a Passo
+
+1. **Baixe o projeto:**
+
    ```bash
    git clone https://github.com/seu-usuario/monitor-queimadas.git
    cd monitor-queimadas
-Configure o ambiente virtual:
+   ```
 
-bash
-python -m venv venv
-Ative o ambiente:
+2. **Configure o ambiente virtual:**
 
-Windows:
+   ```bash
+   python -m venv venv
+   ```
 
-bash
-venv\Scripts\activate
-Mac/Linux:
+3. **Ative o ambiente virtual:**
 
-bash
-source venv/bin/activate
-Instale as dependências:
+   - **Windows:**
+     ```bash
+     venv\Scripts\activate
+     ```
 
-bash
-pip install selenium pandas webdriver-manager
-⏳ Como Executar
-bash
+   - **Mac/Linux:**
+     ```bash
+     source venv/bin/activate
+     ```
+
+4. **Instale as dependências:**
+
+   ```bash
+   pip install selenium pandas webdriver-manager
+   ```
+
+---
+
+##  Como Executar
+
+```bash
 python main.py
+```
+
 O sistema irá:
 
-Baixar automaticamente os dados mais recentes
+- Baixar automaticamente os dados mais recentes  
+- Processar os dados para formato JSON  
+- Repetir o processo a cada 10 minutos  
 
-Processar para formato JSON
+Para parar: **Pressione `Ctrl + C`**
 
-Repetir o processo a cada 10 minutos
+---
 
-Para parar: Pressione Ctrl + C
+##  Estrutura do Projeto
 
-📂 Estrutura do Projeto
+```
 monitor-queimadas/
-├── dados_queimadas/       # Pasta com dados baixados
-│   ├── focos_*.csv       # Dados brutos do INPE
-│   └── ultimos_dados.json # Saída processada
-├── main.py               # Código principal
-├── README.md             # Este arquivo
-└── requirements.txt      # Dependências (gerado automaticamente)
-🛠 Tecnologias Utilizadas
-Python 3
+├── dados_queimadas/         # Pasta com dados baixados
+│   ├── focos_*.csv          # Dados brutos do INPE
+│   └── ultimos_dados.json   # Saída processada
+├── main.py                  # Código principal
+├── README.md                # Este arquivo
+└── requirements.txt         # Dependências (gerado automaticamente)
+```
 
-Selenium WebDriver
+---
 
-Pandas (processamento de dados)
+## 🛠 Tecnologias Utilizadas
 
-Webdriver Manager (gerenciamento automático de drivers)
+- Python 3  
+- Selenium WebDriver  
+- Pandas (processamento de dados)  
+- Webdriver Manager (gerenciamento automático de drivers)  
 
-⁉ Dúvidas Comuns
-1. Não consigo ativar o ambiente virtual
-Solução: Execute o terminal como administrador ou use:
+---
 
-bash
-.\venv\Scripts\activate
-2. Chrome não está instalado no local padrão
-Edite main.py e atualize o caminho:
+##  Possiveis dúvidas
 
-python
-CHROME_PATH = r"C:\caminho\para\chrome.exe"
-👨‍💻 Desenvolvedores
-[Seu Nome] - FIAP 2025
+1. **Não consigo ativar o ambiente virtual**  
+   Solução: Execute o terminal como administrador ou use:
 
-[Seu Colega] - FIAP 2025
+   ```bash
+   .\venv\Scripts\activate
+   ```
+
+2. **Chrome não está instalado no local padrão**  
+   Edite o arquivo `main.py` e atualize o caminho:
+
+   ```python
+   CHROME_PATH = r"C:\caminho\para\chrome.exe"
+   ```
