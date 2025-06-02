@@ -43,7 +43,7 @@
 4. **Instale as dependências:**
 
    ```bash
-   pip install selenium pandas webdriver-manager
+   pip install selenium pandas webdriver-manager geopy
    ```
 
 ---
