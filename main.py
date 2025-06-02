@@ -1,189 +1,219 @@
 import os
 import time
 import pandas as pd
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime, timedelta
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
 
-# Configurações
-DOWNLOAD_DIR = os.path.join(os.getcwd(), "dados_queimadas")
-INPE_URL = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/10min/"
-CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# configurações
+download_dir = os.path.join(os.getcwd(), "dados_queimadas")
+inpe_url = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/10min/"
+chrome_path = r"c:\program files\google\chrome\application\chrome.exe"
 
-
-# --- Funções ---
+# verifica se o chrome está instalado
 def verificar_instalacao_chrome():
-    """Verifica se o Chrome está instalado no caminho especificado"""
-    if not os.path.exists(CHROME_PATH):
+    if not os.path.exists(chrome_path):
         raise FileNotFoundError(
-            f"Chrome não encontrado em {CHROME_PATH}\n"
-            "Instale o Chrome ou ajuste o caminho no código."
+            f"chrome não encontrado em {chrome_path}\n"
+            "instale o chrome ou ajuste o caminho no código."
         )
 
-
+# configura o navegador para automação
 def configurar_navegador():
-    """Configura o navegador Chrome para automação"""
     try:
         verificar_instalacao_chrome()
-
         chrome_options = Options()
-        chrome_options.binary_location = CHROME_PATH
+        chrome_options.binary_location = chrome_path
 
-        # configurações de download
         chrome_options.add_experimental_option("prefs", {
-            "download.default_directory": DOWNLOAD_DIR,
+            "download.default_directory": download_dir,
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
         })
 
-        # modo headless (opcional - remova se quiser ver o navegador)
         chrome_options.add_argument("--headless=new")
-
-        # configuração do webdriver
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
-
     except Exception as e:
-        print(f"Erro ao configurar navegador: {e}")
+        print(f"erro ao configurar navegador: {e}")
         raise
 
-
+# busca e baixa o arquivo csv mais recente do site do inpe
 def baixar_arquivo_mais_recente(driver):
-    """encontra e baixa o arquivo CSV mais recente do INPE"""
     try:
-        print("Acessando o site do INPE...")
-        driver.get(INPE_URL)
+        print("acessando o site do inpe...")
+        driver.get(inpe_url)
         time.sleep(3)
 
-        print("Buscando arquivos CSV...")
+        print("buscando arquivos csv...")
         links = driver.find_elements(By.XPATH, "//a[contains(@href, '.csv')]")
 
         if not links:
-            raise Exception("Nenhum arquivo CSV encontrado!")
+            raise Exception("nenhum arquivo csv encontrado!")
 
-        # filtra arquivos dos últimos 30 minutos (ajuste conforme necessário)
         limite_tempo = datetime.now() - timedelta(minutes=30)
         arquivos_validos = []
 
         for link in links:
             nome_arquivo = link.text
             try:
-                # extrai data/hora do nome do arquivo (ex: focos_10min_20250529_1200.csv)
                 partes = nome_arquivo.split('_')
-                data_str = partes[2]  # AAAAMMDD
-                hora_str = partes[3].split('.')[0]  # HHMM
+                data_str = partes[2]
+                hora_str = partes[3].split('.')[0]
                 data_hora = datetime.strptime(f"{data_str}{hora_str}", "%Y%m%d%H%M")
-
                 if data_hora >= limite_tempo:
                     arquivos_validos.append((data_hora, link))
             except:
                 continue
 
         if not arquivos_validos:
-            raise Exception("Nenhum arquivo recente encontrado!")
+            raise Exception("nenhum arquivo recente encontrado!")
 
-        # Ordena do mais recente para o mais antigo
         arquivos_validos.sort(reverse=True, key=lambda x: x[0])
-
-        # Baixa o mais recente
-        print(f"Baixando arquivo: {arquivos_validos[0][1].text}")
+        print(f"baixando arquivo: {arquivos_validos[0][1].text}")
         arquivos_validos[0][1].click()
-        time.sleep(10)  # Tempo para download
+        time.sleep(10)
 
-        return arquivos_validos[0][0]  # Retorna a data do arquivo
-
+        return arquivos_validos[0][0]
     except Exception as e:
-        print(f"Erro ao baixar arquivo: {e}")
+        print(f"erro ao baixar arquivo: {e}")
         raise
 
-
-def processar_dados():
-    """Processa o arquivo CSV baixado e gera um JSON"""
+# faz a geocodificação reversa para converter coordenadas em nome de local
+def obter_localizacao(lat, lon):
     try:
-        print("Processando dados...")
+        url = f"https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "format": "json",
+            "zoom": 10,
+            "addressdetails": 1
+        }
+        headers = {
+            "user-agent": "queimadas-monitor/1.0"
+        }
+        response = requests.get(url, params=params, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            endereco = data.get("address", {})
+            cidade = endereco.get("city") or endereco.get("town") or endereco.get("village") or ""
+            estado = endereco.get("state", "")
+            pais = endereco.get("country", "")
+            return f"{cidade}, {estado}, {pais}".strip(", ")
+        else:
+            return "localização não encontrada"
+    except Exception:
+        return "erro ao buscar localização"
+DOWNLOAD_DIR = os.path.join(os.getcwd(), "dados_queimadas")
 
-        # Lista arquivos CSV na pasta de downloads
+def converter_para_localizacao(latitude, longitude):
+    """converte latitude e longitude para endereço legível"""
+    try:
+        geolocator = Nominatim(user_agent="monitor_queimadas")
+        localizacao = geolocator.reverse(f"{latitude}, {longitude}", timeout=10)
+        return localizacao.address if localizacao else "desconhecido"
+    except GeocoderTimedOut:
+        return "tempo esgotado"
+    except Exception as e:
+        return f"erro: {e}"
+
+# processa os dados do csv e gera um json com coordenadas e nomes de local
+def processar_dados():
+    """processa o arquivo csv baixado e gera um json"""
+    try:
+        print("processando dados...")
+
         arquivos = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith('.csv')]
         if not arquivos:
-            raise Exception("Nenhum arquivo CSV encontrado!")
+            raise Exception("nenhum arquivo csv encontrado!")
 
-        # Pega o arquivo mais recente
         arquivo_mais_recente = max(
             [os.path.join(DOWNLOAD_DIR, f) for f in arquivos],
             key=os.path.getctime
         )
-        print(f"Arquivo selecionado: {arquivo_mais_recente}")
+        print(f"arquivo selecionado: {arquivo_mais_recente}")
 
-        # Lê o CSV (ajuste o separador se necessário)
-        df = pd.read_csv(arquivo_mais_recente, header=None)
+        # lê o csv corretamente, usando as colunas
+        df = pd.read_csv(arquivo_mais_recente)
 
-        # Processa cada linha (formato: lat,lon,satélite,data)
+        print(f"linhas lidas do csv: {len(df)}")
+
         dados_processados = []
-        for linha in df[0]:
-            if pd.isna(linha):
-                continue
-            partes = str(linha).split(',')
-            if len(partes) >= 4:
+        for index, row in df.iterrows():
+            try:
+                lat = float(row['lat'])
+                lon = float(row['lon'])
+                satelite = str(row['satelite']).strip()
+                data_hora = str(row['data']).strip()
+
+                # aqui você pode chamar a função de localização se quiser
+                localizacao = converter_para_localizacao(lat, lon)
+
                 dados_processados.append({
-                    "latitude": float(partes[0]),
-                    "longitude": float(partes[1]),
-                    "satelite": partes[2].strip(),
-                    "data_hora": partes[3].strip()
+                    "latitude": lat,
+                    "longitude": lon,
+                    "satelite": satelite,
+                    "data_hora": data_hora,
+                    "localizacao": localizacao
                 })
 
-        # Salva como JSON
+            except Exception as e:
+                print(f"erro ao processar linha {index}: {e}")
+                continue
+
+        if not dados_processados:
+            raise Exception("nenhum dado processado!")
+
         json_path = os.path.join(DOWNLOAD_DIR, "dados_processados.json")
         pd.DataFrame(dados_processados).to_json(json_path, orient="records", date_format="iso")
-        print(f"Dados salvos em: {json_path}")
+        print(f"dados salvos em: {json_path}")
 
         return json_path
 
     except Exception as e:
-        print(f"Erro ao processar dados: {e}")
+        print(f"erro ao processar dados: {e}")
         raise
 
 
-# --- Execução Principal ---
+# execução principal do programa
 if __name__ == "__main__":
-    print("=== Monitor de Queimadas INPE ===")
-    print("Coleta automática a cada 10 minutos")
-    print("Pressione Ctrl+C para encerrar\n")
+    print("=== monitor de queimadas inpe ===")
+    print("coleta automática a cada 10 minutos")
+    print("pressione ctrl+c para encerrar\n")
 
     while True:
         try:
-            # Registra hora de início
             inicio = datetime.now()
-            print(f"\n>>> Iniciando ciclo: {inicio.strftime('%d/%m/%Y %H:%M:%S')}")
-
-            # --- Seu código original aqui ---
+            print(f"\n>>> iniciando ciclo: {inicio.strftime('%d/%m/%Y %H:%M:%S')}")
             driver = None
             try:
                 driver = configurar_navegador()
                 data_arquivo = baixar_arquivo_mais_recente(driver)
                 json_path = processar_dados()
-                print(f"Dados atualizados em: {data_arquivo}")
+                print(f"dados atualizados em: {data_arquivo}")
             except Exception as e:
-                print(f"Erro durante execução: {e}")
+                print(f"erro durante execução: {e}")
             finally:
                 if driver:
                     driver.quit()
-            # --- Fim do seu código original ---
 
-            # Calcula tempo restante para próxima execução
             tempo_execucao = (datetime.now() - inicio).total_seconds()
-            espera = max(600 - tempo_execucao, 0)  # Garante mínimo 10 minutos entre execuções
-
-            print(f"\nPróxima execução em: {espera / 60:.1f} minutos")
+            espera = max(600 - tempo_execucao, 0)
+            print(f"\npróxima execução em: {espera / 60:.1f} minutos")
             time.sleep(espera)
 
         except KeyboardInterrupt:
-            print("\nEncerrando monitoramento...")
+            print("\nencerrando monitoramento...")
             break
         except Exception as e:
-            print(f"ERRO GRAVE: {e}")
-            print("Reiniciando em 1 minuto...")
+            print(f"erro grave: {e}")
+            print("reiniciando em 1 minuto...")
             time.sleep(60)
