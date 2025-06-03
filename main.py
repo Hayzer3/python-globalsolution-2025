@@ -12,8 +12,14 @@ import numpy as np
 # Manipulação de JSON
 import json
 
-# Define o diretório onde estão os dados
-DOWNLOAD_DIR = os.path.join(os.getcwd(), "dados_queimadas")
+# Garante que a pasta existe
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+# Garante que o JSON existe (vazio se não houver)
+json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
+if not os.path.exists(json_path):
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump([], f, indent=4, ensure_ascii=False)
 
 
 def converter_para_municipio(lat, lon):
