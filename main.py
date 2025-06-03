@@ -1,219 +1,133 @@
-import os
-import time
-import pandas as pd
-import requests
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from datetime import datetime, timedelta
-from geopy.geocoders import Nominatim
+
+import os # Manipulação de diretórios e arquivos
+import pandas as pd # Leitura de CSV e manipulação de dados tabulares
+from datetime import datetime # Data e hora
+from geopy.geocoders import Nominatim # Geocodificação reversa (lat/lon -> município)
 from geopy.exc import GeocoderTimedOut
+from sklearn.cluster import DBSCAN  # Algoritmo de clusterização para detectar "grupos de queimadas"
 
-# configurações
-download_dir = os.path.join(os.getcwd(), "dados_queimadas")
-inpe_url = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/10min/"
-chrome_path = r"c:\program files\google\chrome\application\chrome.exe"
+# Operações com arrays numéricos
+import numpy as np
 
-# verifica se o chrome está instalado
-def verificar_instalacao_chrome():
-    if not os.path.exists(chrome_path):
-        raise FileNotFoundError(
-            f"chrome não encontrado em {chrome_path}\n"
-            "instale o chrome ou ajuste o caminho no código."
-        )
+# Manipulação de JSON
+import json
 
-# configura o navegador para automação
-def configurar_navegador():
-    try:
-        verificar_instalacao_chrome()
-        chrome_options = Options()
-        chrome_options.binary_location = chrome_path
-
-        chrome_options.add_experimental_option("prefs", {
-            "download.default_directory": download_dir,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-        })
-
-        chrome_options.add_argument("--headless=new")
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        return driver
-    except Exception as e:
-        print(f"erro ao configurar navegador: {e}")
-        raise
-
-# busca e baixa o arquivo csv mais recente do site do inpe
-def baixar_arquivo_mais_recente(driver):
-    try:
-        print("acessando o site do inpe...")
-        driver.get(inpe_url)
-        time.sleep(3)
-
-        print("buscando arquivos csv...")
-        links = driver.find_elements(By.XPATH, "//a[contains(@href, '.csv')]")
-
-        if not links:
-            raise Exception("nenhum arquivo csv encontrado!")
-
-        limite_tempo = datetime.now() - timedelta(minutes=30)
-        arquivos_validos = []
-
-        for link in links:
-            nome_arquivo = link.text
-            try:
-                partes = nome_arquivo.split('_')
-                data_str = partes[2]
-                hora_str = partes[3].split('.')[0]
-                data_hora = datetime.strptime(f"{data_str}{hora_str}", "%Y%m%d%H%M")
-                if data_hora >= limite_tempo:
-                    arquivos_validos.append((data_hora, link))
-            except:
-                continue
-
-        if not arquivos_validos:
-            raise Exception("nenhum arquivo recente encontrado!")
-
-        arquivos_validos.sort(reverse=True, key=lambda x: x[0])
-        print(f"baixando arquivo: {arquivos_validos[0][1].text}")
-        arquivos_validos[0][1].click()
-        time.sleep(10)
-
-        return arquivos_validos[0][0]
-    except Exception as e:
-        print(f"erro ao baixar arquivo: {e}")
-        raise
-
-# faz a geocodificação reversa para converter coordenadas em nome de local
-def obter_localizacao(lat, lon):
-    try:
-        url = f"https://nominatim.openstreetmap.org/reverse"
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "format": "json",
-            "zoom": 10,
-            "addressdetails": 1
-        }
-        headers = {
-            "user-agent": "queimadas-monitor/1.0"
-        }
-        response = requests.get(url, params=params, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            endereco = data.get("address", {})
-            cidade = endereco.get("city") or endereco.get("town") or endereco.get("village") or ""
-            estado = endereco.get("state", "")
-            pais = endereco.get("country", "")
-            return f"{cidade}, {estado}, {pais}".strip(", ")
-        else:
-            return "localização não encontrada"
-    except Exception:
-        return "erro ao buscar localização"
+# Define o diretório onde estão os dados
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "dados_queimadas")
 
-def converter_para_localizacao(latitude, longitude):
-    """converte latitude e longitude para endereço legível"""
+
+def converter_para_municipio(lat, lon):
+    """Converte coordenadas em nome de município (ou 'desconhecido')"""
     try:
         geolocator = Nominatim(user_agent="monitor_queimadas")
-        localizacao = geolocator.reverse(f"{latitude}, {longitude}", timeout=10)
-        return localizacao.address if localizacao else "desconhecido"
+        localizacao = geolocator.reverse((lat, lon), timeout=10)
+        if localizacao and 'address' in localizacao.raw:
+            endereco = localizacao.raw['address']
+            return endereco.get("city") or endereco.get("town") or endereco.get("village") or "desconhecido"
+        return "desconhecido"
     except GeocoderTimedOut:
-        return "tempo esgotado"
-    except Exception as e:
-        return f"erro: {e}"
+        return "desconhecido"
+    except Exception:
+        return "desconhecido"
 
-# processa os dados do csv e gera um json com coordenadas e nomes de local
-def processar_dados():
-    """processa o arquivo csv baixado e gera um json"""
+
+def classificar_intensidade(coordenadas):
+    """Classifica intensidade com base na densidade de queimadas (via DBSCAN)"""
+    if not coordenadas:
+        return []
+
+    coords_array = np.array(coordenadas)
+    kms_per_radian = 6371.0088
+    eps_km = 10 / kms_per_radian  # 10 km de raio para formar um cluster
+    db = DBSCAN(eps=eps_km, min_samples=2, metric='haversine').fit(np.radians(coords_array))
+
+    labels = db.labels_
+    resultado = []
+
+    for label in set(labels):
+        if label == -1:
+            grupo = [tuple(c) for i, c in enumerate(coords_array) if labels[i] == -1]
+            intensidade = "baixa"
+        else:
+            grupo = [tuple(c) for i, c in enumerate(coords_array) if labels[i] == label]
+            tamanho = len(grupo)
+            if tamanho >= 10:
+                intensidade = "alta"
+            elif tamanho >= 5:
+                intensidade = "média"
+            else:
+                intensidade = "baixa"
+
+        for coord in grupo:
+            resultado.append((coord, intensidade))
+    return resultado
+
+
+def processar_regioes_queimadas():
+    """Processa CSV e gera JSON com data, município e intensidade"""
     try:
-        print("processando dados...")
+        print("\nProcessando arquivo de queimadas...")
 
         arquivos = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith('.csv')]
         if not arquivos:
-            raise Exception("nenhum arquivo csv encontrado!")
+            raise Exception("Nenhum arquivo CSV encontrado no diretório.")
 
         arquivo_mais_recente = max(
             [os.path.join(DOWNLOAD_DIR, f) for f in arquivos],
             key=os.path.getctime
         )
-        print(f"arquivo selecionado: {arquivo_mais_recente}")
 
-        # lê o csv corretamente, usando as colunas
         df = pd.read_csv(arquivo_mais_recente)
+        if df.empty:
+            print("⚠️ Arquivo CSV está vazio.")
+            return
 
-        print(f"linhas lidas do csv: {len(df)}")
+        data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        coordenadas = list(zip(df['lat'], df['lon']))
+        intensidade_lista = classificar_intensidade(coordenadas)
 
-        dados_processados = []
-        for index, row in df.iterrows():
-            try:
-                lat = float(row['lat'])
-                lon = float(row['lon'])
-                satelite = str(row['satelite']).strip()
-                data_hora = str(row['data']).strip()
+        saida = []
+        for (lat, lon), intensidade in intensidade_lista:
+            municipio = converter_para_municipio(lat, lon)
+            saida.append({
+                "dataqueimada": data_hora_str,
+                "municipio": municipio,
+                "intensidadeQueimada": intensidade
+            })
 
-                # aqui você pode chamar a função de localização se quiser
-                localizacao = converter_para_localizacao(lat, lon)
+        json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(saida, f, indent=4, ensure_ascii=False)
 
-                dados_processados.append({
-                    "latitude": lat,
-                    "longitude": lon,
-                    "satelite": satelite,
-                    "data_hora": data_hora,
-                    "localizacao": localizacao
-                })
-
-            except Exception as e:
-                print(f"erro ao processar linha {index}: {e}")
-                continue
-
-        if not dados_processados:
-            raise Exception("nenhum dado processado!")
-
-        json_path = os.path.join(DOWNLOAD_DIR, "dados_processados.json")
-        pd.DataFrame(dados_processados).to_json(json_path, orient="records", date_format="iso")
-        print(f"dados salvos em: {json_path}")
-
-        return json_path
+        print(f"\n✅ JSON salvo em: {json_path}")
+        print(json.dumps(saida, indent=4, ensure_ascii=False))
 
     except Exception as e:
-        print(f"erro ao processar dados: {e}")
-        raise
+        print(f"❌ Erro ao processar queimadas: {e}")
 
 
-# execução principal do programa
-if __name__ == "__main__":
-    print("=== monitor de queimadas inpe ===")
-    print("coleta automática a cada 10 minutos")
-    print("pressione ctrl+c para encerrar\n")
+def exibir_menu():
+    """Mostra o menu principal"""
+    print("\n=== MENU DO MONITOR DE QUEIMADAS ===")
+    print("1. Ver regiões com queimadas agora")
+    print("2. Sair")
 
+
+def executar_menu():
+    """Loop principal do menu"""
     while True:
-        try:
-            inicio = datetime.now()
-            print(f"\n>>> iniciando ciclo: {inicio.strftime('%d/%m/%Y %H:%M:%S')}")
-            driver = None
-            try:
-                driver = configurar_navegador()
-                data_arquivo = baixar_arquivo_mais_recente(driver)
-                json_path = processar_dados()
-                print(f"dados atualizados em: {data_arquivo}")
-            except Exception as e:
-                print(f"erro durante execução: {e}")
-            finally:
-                if driver:
-                    driver.quit()
-
-            tempo_execucao = (datetime.now() - inicio).total_seconds()
-            espera = max(600 - tempo_execucao, 0)
-            print(f"\npróxima execução em: {espera / 60:.1f} minutos")
-            time.sleep(espera)
-
-        except KeyboardInterrupt:
-            print("\nencerrando monitoramento...")
+        exibir_menu()
+        escolha = input("Escolha uma opção (1 ou 2): ").strip()
+        if escolha == "1":
+            processar_regioes_queimadas()
+        elif escolha == "2":
+            print("👋 Encerrando o programa...")
             break
-        except Exception as e:
-            print(f"erro grave: {e}")
-            print("reiniciando em 1 minuto...")
-            time.sleep(60)
+        else:
+            print("⚠️ Opção inválida. Tente novamente.")
+
+
+# Ponto de entrada do programa
+if __name__ == "__main__":
+    print("🔥 Bem-vindo ao Monitor de Queimadas")
+    executar_menu()
