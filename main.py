@@ -1,16 +1,14 @@
-
-import os # Manipulação de diretórios e arquivos
-import pandas as pd # Leitura de CSV e manipulação de dados tabulares
-from datetime import datetime # Data e hora
-from geopy.geocoders import Nominatim # Geocodificação reversa (lat/lon -> município)
+import os  # Manipulação de diretórios e arquivos
+import pandas as pd  # Leitura de CSV e manipulação de dados tabulares
+from datetime import datetime  # Data e hora
+from geopy.geocoders import Nominatim  # Geocodificação reversa (lat/lon -> município)
 from geopy.exc import GeocoderTimedOut
 from sklearn.cluster import DBSCAN  # Algoritmo de clusterização para detectar "grupos de queimadas"
+import numpy as np  # Operações com arrays numéricos
+import json  # Manipulação de JSON
 
-# Operações com arrays numéricos
-import numpy as np
-
-# Manipulação de JSON
-import json
+# Configuração do diretório (substitua pelo seu caminho)
+DOWNLOAD_DIR = "dados_queimadas"
 
 # Garante que a pasta existe
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -23,17 +21,34 @@ if not os.path.exists(json_path):
 
 
 def converter_para_municipio(lat, lon):
-    """Converte coordenadas em nome de município (ou 'desconhecido')"""
+    """Converte coordenadas em nome de município com fallbacks robustos"""
     try:
-        geolocator = Nominatim(user_agent="monitor_queimadas")
-        localizacao = geolocator.reverse((lat, lon), timeout=10)
+        geolocator = Nominatim(user_agent="monitor_queimadas_v2")
+        localizacao = geolocator.reverse((lat, lon), timeout=15, language='pt-br')
+
         if localizacao and 'address' in localizacao.raw:
             endereco = localizacao.raw['address']
-            return endereco.get("city") or endereco.get("town") or endereco.get("village") or "desconhecido"
+
+            # Hierarquia de fallbacks para o nome do município
+            return (endereco.get("city")
+                    or endereco.get("town")
+                    or endereco.get("village")
+                    or endereco.get("municipality")
+                    or endereco.get("county")
+                    or endereco.get("state_district")
+                    or "desconhecido")
+
         return "desconhecido"
+
     except GeocoderTimedOut:
-        return "desconhecido"
-    except Exception:
+        # Tentativa de retry
+        try:
+            return converter_para_municipio(lat, lon)
+        except:
+            return "desconhecido"
+
+    except Exception as e:
+        print(f" Erro na geocodificação: {str(e)} | Coord: ({lat}, {lon})")
         return "desconhecido"
 
 
@@ -70,7 +85,7 @@ def classificar_intensidade(coordenadas):
 
 
 def processar_regioes_queimadas():
-    """Processa CSV e gera JSON com data, município e intensidade"""
+    """Processa CSV e gera JSON com data, município, intensidade E COORDENADAS"""
     try:
         print("\nProcessando arquivo de queimadas...")
 
@@ -85,7 +100,7 @@ def processar_regioes_queimadas():
 
         df = pd.read_csv(arquivo_mais_recente)
         if df.empty:
-            print("⚠️ Arquivo CSV está vazio.")
+            print("Arquivo CSV está vazio.")
             return
 
         data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -98,18 +113,20 @@ def processar_regioes_queimadas():
             saida.append({
                 "dataqueimada": data_hora_str,
                 "municipio": municipio,
-                "intensidadeQueimada": intensidade
+                "intensidadeQueimada": intensidade,
+                "latitude": lat,  # Incluído
+                "longitude": lon  # Incluído
             })
 
         json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(saida, f, indent=4, ensure_ascii=False)
 
-        print(f"\n✅ JSON salvo em: {json_path}")
+        print(f"\nJSON salvo em: {json_path}")
         print(json.dumps(saida, indent=4, ensure_ascii=False))
 
     except Exception as e:
-        print(f"❌ Erro ao processar queimadas: {e}")
+        print(f"Erro ao processar queimadas: {e}")
 
 
 def exibir_menu():
@@ -127,13 +144,13 @@ def executar_menu():
         if escolha == "1":
             processar_regioes_queimadas()
         elif escolha == "2":
-            print("👋 Encerrando o programa...")
+            print("Encerrando o programa...")
             break
         else:
-            print("⚠️ Opção inválida. Tente novamente.")
+            print("Opção inválida. Tente novamente.")
 
 
 # Ponto de entrada do programa
 if __name__ == "__main__":
-    print("🔥 Bem-vindo ao Monitor de Queimadas")
+    print("Bem-vindo ao Monitor de Queimadas")
     executar_menu()

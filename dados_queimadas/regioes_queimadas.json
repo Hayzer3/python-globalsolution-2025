@@ -1,157 +1,219 @@
 [
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Barão de Grajaú",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -6.63802,
+        "longitude": -43.21107
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Barão de Grajaú",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -6.6368,
+        "longitude": -43.20226
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "São Félix de Balsas",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.07475,
+        "longitude": -44.93007
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "São Félix de Balsas",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.07344,
+        "longitude": -44.92037
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.27212,
+        "longitude": -42.66878
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.27082,
+        "longitude": -42.65879
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.26295,
+        "longitude": -42.67018
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.26165,
+        "longitude": -42.66014
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.25378,
+        "longitude": -42.67158
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Minas Novas",
-        "intensidadeQueimada": "média"
+        "intensidadeQueimada": "média",
+        "latitude": -17.25247,
+        "longitude": -42.66146
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "média"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Minas Novas",
+        "intensidadeQueimada": "média",
+        "latitude": -17.284,
+        "longitude": -42.6479
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "média"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Minas Novas",
+        "intensidadeQueimada": "média",
+        "latitude": -17.3041,
+        "longitude": -42.643
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
-    },
-    {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
-    },
-    {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "São Desidério",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -13.10306,
+        "longitude": -45.26614
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "São Desidério",
+        "intensidadeQueimada": "baixa",
+        "latitude": -13.09293,
+        "longitude": -45.26749
+    },
+    {
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "São Desidério",
+        "intensidadeQueimada": "baixa",
+        "latitude": -13.0828,
+        "longitude": -45.26884
+    },
+    {
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Xique-Xique",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -10.54881,
+        "longitude": -42.44273
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Xique-Xique",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -10.54758,
+        "longitude": -42.43383
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Benedito Leite",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.01279,
+        "longitude": -44.60754
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Benedito Leite",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.01153,
+        "longitude": -44.59816
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Benedito Leite",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.01028,
+        "longitude": -44.58891
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Benedito Leite",
+        "intensidadeQueimada": "baixa",
+        "latitude": -7.00373,
+        "longitude": -44.60898
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Grajaú",
+        "intensidadeQueimada": "baixa",
+        "latitude": -5.92476,
+        "longitude": -45.53635
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Grajaú",
+        "intensidadeQueimada": "baixa",
+        "latitude": -5.92339,
+        "longitude": -45.52635
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Traipu",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -9.7865,
+        "longitude": -37.00228
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Floriano",
+        "intensidadeQueimada": "baixa",
+        "latitude": -6.73365,
+        "longitude": -42.91293
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Bom Jesus do Tocantins",
+        "intensidadeQueimada": "baixa",
+        "latitude": -9.1159,
+        "longitude": -47.64638
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Lizarda",
+        "intensidadeQueimada": "baixa",
+        "latitude": -9.07513,
+        "longitude": -47.15563
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Recursolândia",
+        "intensidadeQueimada": "baixa",
+        "latitude": -8.77755,
+        "longitude": -47.24178
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Coromandel",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -18.68464,
+        "longitude": -46.99126
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
+        "dataqueimada": "2025-06-03 21:18:06",
         "municipio": "Capitão Enéas",
-        "intensidadeQueimada": "baixa"
+        "intensidadeQueimada": "baixa",
+        "latitude": -16.03384,
+        "longitude": -43.68253
     },
     {
-        "dataqueimada": "2025-06-03 19:59:18",
-        "municipio": "desconhecido",
-        "intensidadeQueimada": "baixa"
+        "dataqueimada": "2025-06-03 21:18:06",
+        "municipio": "Juazeiro",
+        "intensidadeQueimada": "baixa",
+        "latitude": -9.4964,
+        "longitude": -40.3088
     }
 ]
