@@ -24,5 +24,5 @@
    
 ## Dependências
 
-pip install pandas geopy scikit-learn numpy
+pip install requests pandas numpy scikit-learn beautifulsoup4 geopy
 
