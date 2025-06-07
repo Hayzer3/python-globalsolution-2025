@@ -68,7 +68,7 @@ def classificar_intensidade(coordenadas):
             # define a intensidade pelo tamanho do grupo
             if tamanho >= 10:
                 intensidade = "alta"
-            elif tamanho >= 5:
+            elif tamanho >= 3:
                 intensidade = "média"
             else:
                 intensidade = "baixa"
@@ -109,8 +109,8 @@ def processar_regioes_queimadas():
         if df.empty:
             print("o arquivo csv está vazio.")
             return
-        # pega a data do arquivo ou usa a data atual
-        data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%y-%m-%d %h:%m:%s")
+        # pega a data do arquivo ou usa a data atual (formato corrigido)
+        data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         coordenadas = list(zip(df['lat'], df['lon']))  # pega todas as coordenadas
         intensidade_lista = classificar_intensidade(coordenadas)  # classifica a intensidade
         saida = []
@@ -125,10 +125,10 @@ def processar_regioes_queimadas():
             })
         # salva tudo no arquivo json
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(saida, f, indent=4, ensure_ascii=false)
+            json.dump(saida, f, indent=4, ensure_ascii=False)
         print(f"\njson salvo em: {json_path}")
-        print(json.dumps(saida, indent=4, ensure_ascii=false))
-    except exception as e:
+        print(json.dumps(saida, indent=4, ensure_ascii=False))
+    except Exception as e:
         print(f"erro ao processar queimadas: {e}")
 
 # mostra o menu pro usuário
@@ -139,7 +139,7 @@ def exibir_menu():
 
 # controla o menu
 def executar_menu():
-    while true:
+    while True:  # CORREÇÃO: 'True' com T maiúsculo
         exibir_menu()
         escolha = input("escolha uma opção (1 ou 2): ").strip()
         if escolha == "1":
