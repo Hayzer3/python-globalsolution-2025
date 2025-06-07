@@ -1,35 +1,35 @@
-import os  # Manipulação de diretórios e arquivos
-import pandas as pd  # Leitura de CSV e manipulação de dados tabulares
-from datetime import datetime  # Data e hora
-from geopy.geocoders import Nominatim  # Geocodificação reversa (lat/lon -> município)
-from geopy.exc import GeocoderTimedOut
-from sklearn.cluster import DBSCAN  # Algoritmo de clusterização para detectar "grupos de queimadas"
-import numpy as np  # Operações com arrays numéricos
-import json  # Manipulação de JSON
+# importando as bibliotecas que vamos usar
+import os  # pra trabalhar com pastas e arquivos
+import io  # pra lidar com dados em memória
+import json  # pra trabalhar com arquivos json
+import requests  # pra fazer requisições na internet
+import pandas as pd  # pra trabalhar com tabelas de dados
+import numpy as np  # pra cálculos matemáticos
+from datetime import datetime  # pra trabalhar com datas
+from geopy.geocoders import Nominatim  # pra converter coordenadas em nomes de cidades
+from geopy.exc import GeocoderTimedOut  # pra tratar erros de timeout
+from sklearn.cluster import DBSCAN  # pra agrupar pontos próximos
+from bs4 import BeautifulSoup  # pra ler html de páginas web
 
-# Configuração do diretório (substitua pelo seu caminho)
-DOWNLOAD_DIR = "dados_queimadas"
+# pasta onde vamos salvar os dados
+download_dir = "dados_queimadas"
+os.makedirs(download_dir, exist_ok=True)  # cria a pasta se não existir
 
-# Garante que a pasta existe
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
-# Garante que o JSON existe (vazio se não houver)
-json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
-if not os.path.exists(json_path):
-    with open(json_path, "w", encoding="utf-8") as f:
+# caminho do arquivo json que vai guardar os dados
+json_path = os.path.join(download_dir, "regioes_queimadas.json")
+if not os.path.exists(json_path):  # se o arquivo não existir
+    with open(json_path, "w", encoding="utf-8") as f:  # cria um arquivo vazio
         json.dump([], f, indent=4, ensure_ascii=False)
 
-
+# função que pega coordenadas e devolve o nome da cidade
 def converter_para_municipio(lat, lon):
-    """Converte coordenadas em nome de município com fallbacks robustos"""
     try:
+        # usa o nominatim (openstreetmap) pra achar a cidade
         geolocator = Nominatim(user_agent="monitor_queimadas_v2")
         localizacao = geolocator.reverse((lat, lon), timeout=15, language='pt-br')
-
         if localizacao and 'address' in localizacao.raw:
             endereco = localizacao.raw['address']
-
-            # Hierarquia de fallbacks para o nome do município
+            # tenta pegar o nome da cidade de vários campos possíveis
             return (endereco.get("city")
                     or endereco.get("town")
                     or endereco.get("village")
@@ -37,120 +37,120 @@ def converter_para_municipio(lat, lon):
                     or endereco.get("county")
                     or endereco.get("state_district")
                     or "desconhecido")
-
         return "desconhecido"
-
-    except GeocoderTimedOut:
-        # Tentativa de retry
+    except GeocoderTimedOut:  # se demorar muito, tenta de novo
         try:
             return converter_para_municipio(lat, lon)
         except:
             return "desconhecido"
-
-    except Exception as e:
-        print(f" Erro na geocodificação: {str(e)} | Coord: ({lat}, {lon})")
+    except Exception as e:  # se der outro erro
+        print(f"erro na geocodificação: {str(e)} | coord: ({lat}, {lon})")
         return "desconhecido"
 
-
+# função que classifica se a queimada é baixa, média ou alta intensidade
 def classificar_intensidade(coordenadas):
-    """Classifica intensidade com base na densidade de queimadas (via DBSCAN)"""
-    if not coordenadas:
+    if not coordenadas:  # se não tiver coordenadas
         return []
-
     coords_array = np.array(coordenadas)
-    kms_per_radian = 6371.0088
-    eps_km = 10 / kms_per_radian  # 10 km de raio para formar um cluster
+    kms_per_radian = 6371.0088  # raio da terra em km
+    eps_km = 10 / kms_per_radian  # considera 10km como limite
+    # usa o dbscan pra agrupar pontos próximos
     db = DBSCAN(eps=eps_km, min_samples=2, metric='haversine').fit(np.radians(coords_array))
-
     labels = db.labels_
     resultado = []
-
     for label in set(labels):
-        if label == -1:
+        if label == -1:  # pontos isolados
             grupo = [tuple(c) for i, c in enumerate(coords_array) if labels[i] == -1]
             intensidade = "baixa"
-        else:
+        else:  # pontos agrupados
             grupo = [tuple(c) for i, c in enumerate(coords_array) if labels[i] == label]
             tamanho = len(grupo)
+            # define a intensidade pelo tamanho do grupo
             if tamanho >= 10:
                 intensidade = "alta"
             elif tamanho >= 5:
                 intensidade = "média"
             else:
                 intensidade = "baixa"
-
         for coord in grupo:
             resultado.append((coord, intensidade))
     return resultado
 
-
-def processar_regioes_queimadas():
-    """Processa CSV e gera JSON com data, município, intensidade E COORDENADAS"""
+# pega o link do arquivo mais recente no site do inpe
+def obter_url_ultimo_csv():
+    url_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/10min/"
     try:
-        print("\nProcessando arquivo de queimadas...")
+        response = requests.get(url_base)
+        soup = BeautifulSoup(response.content, "html.parser")
+        links = soup.find_all("a")
+        # pega todos os links que terminam com .csv
+        arquivos_csv = [
+            link.get("href") for link in links if link.get("href", "").endswith(".csv")
+        ]
+        if not arquivos_csv:
+            raise Exception("nenhum arquivo csv encontrado no site do inpe.")
+        ultimo_csv = sorted(arquivos_csv)[-1]  # pega o mais recente
+        return url_base + ultimo_csv
+    except Exception as e:
+        print(f"erro ao obter o link do csv mais recente: {e}")
+        return None
 
-        arquivos = [f for f in os.listdir(DOWNLOAD_DIR) if f.endswith('.csv')]
-        if not arquivos:
-            raise Exception("Nenhum arquivo CSV encontrado no diretório.")
-
-        arquivo_mais_recente = max(
-            [os.path.join(DOWNLOAD_DIR, f) for f in arquivos],
-            key=os.path.getctime
-        )
-
-        df = pd.read_csv(arquivo_mais_recente)
-        if df.empty:
-            print("Arquivo CSV está vazio.")
+# processa os dados de queimadas
+def processar_regioes_queimadas():
+    try:
+        print("\nprocessando arquivo de queimadas do inpe...")
+        url_csv = obter_url_ultimo_csv()
+        if not url_csv:
             return
-
-        data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        coordenadas = list(zip(df['lat'], df['lon']))
-        intensidade_lista = classificar_intensidade(coordenadas)
-
+        # baixa o arquivo csv
+        response = requests.get(url_csv)
+        response.encoding = "utf-8"
+        df = pd.read_csv(io.StringIO(response.text))  # lê o csv
+        if df.empty:
+            print("o arquivo csv está vazio.")
+            return
+        # pega a data do arquivo ou usa a data atual
+        data_hora_str = df['data_hora'].iloc[0] if 'data_hora' in df.columns else datetime.now().strftime("%y-%m-%d %h:%m:%s")
+        coordenadas = list(zip(df['lat'], df['lon']))  # pega todas as coordenadas
+        intensidade_lista = classificar_intensidade(coordenadas)  # classifica a intensidade
         saida = []
         for (lat, lon), intensidade in intensidade_lista:
-            municipio = converter_para_municipio(lat, lon)
+            municipio = converter_para_municipio(lat, lon)  # pega o nome da cidade
             saida.append({
                 "dataqueimada": data_hora_str,
                 "municipio": municipio,
-                "intensidadeQueimada": intensidade,
-                "latitude": lat,  # Incluído
-                "longitude": lon  # Incluído
+                "intensidadequeimada": intensidade,
+                "latitude": lat,
+                "longitude": lon
             })
-
-        json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
+        # salva tudo no arquivo json
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(saida, f, indent=4, ensure_ascii=False)
+            json.dump(saida, f, indent=4, ensure_ascii=false)
+        print(f"\njson salvo em: {json_path}")
+        print(json.dumps(saida, indent=4, ensure_ascii=false))
+    except exception as e:
+        print(f"erro ao processar queimadas: {e}")
 
-        print(f"\nJSON salvo em: {json_path}")
-        print(json.dumps(saida, indent=4, ensure_ascii=False))
-
-    except Exception as e:
-        print(f"Erro ao processar queimadas: {e}")
-
-
+# mostra o menu pro usuário
 def exibir_menu():
-    """Mostra o menu principal"""
-    print("\n=== MENU DO MONITOR DE QUEIMADAS ===")
-    print("1. Ver regiões com queimadas agora")
-    print("2. Sair")
+    print("\n=== menu do monitor de queimadas ===")
+    print("1. ver regiões com queimadas agora")
+    print("2. sair")
 
-
+# controla o menu
 def executar_menu():
-    """Loop principal do menu"""
-    while True:
+    while true:
         exibir_menu()
-        escolha = input("Escolha uma opção (1 ou 2): ").strip()
+        escolha = input("escolha uma opção (1 ou 2): ").strip()
         if escolha == "1":
             processar_regioes_queimadas()
         elif escolha == "2":
-            print("Encerrando o programa...")
+            print("encerrando o programa...")
             break
         else:
-            print("Opção inválida. Tente novamente.")
+            print("opção inválida. tente novamente.")
 
-
-# Ponto de entrada do programa
+# inicia o programa
 if __name__ == "__main__":
-    print("Bem-vindo ao Monitor de Queimadas")
+    print("bem-vindo ao monitor de queimadas")
     executar_menu()
