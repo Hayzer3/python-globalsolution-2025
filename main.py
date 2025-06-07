@@ -6,6 +6,7 @@ from geopy.exc import GeocoderTimedOut
 from sklearn.cluster import DBSCAN  # Algoritmo de clusterização para detectar "grupos de queimadas"
 import numpy as np  # Operações com arrays numéricos
 import json  # Manipulação de JSON
+import requests
 
 # Configuração do diretório (substitua pelo seu caminho)
 DOWNLOAD_DIR = "dados_queimadas"
@@ -111,11 +112,11 @@ def processar_regioes_queimadas():
         for (lat, lon), intensidade in intensidade_lista:
             municipio = converter_para_municipio(lat, lon)
             saida.append({
-                "dataqueimada": data_hora_str,
-                "municipio": municipio,
+                "dataQueimada": data_hora_str,
                 "intensidadeQueimada": intensidade,
-                "latitude": lat,  # Incluído
-                "longitude": lon  # Incluído
+                "municipio": municipio,
+                "latitudeQueimada": lat,  # Incluído
+                "longitudeQueimada": lon  # Incluído
             })
 
         json_path = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
@@ -124,6 +125,18 @@ def processar_regioes_queimadas():
 
         print(f"\nJSON salvo em: {json_path}")
         print(json.dumps(saida, indent=4, ensure_ascii=False))
+
+        # Enviar para o endpoint
+        endpoint = "http://localhost:8080/api/ponto-queimadas/batch"
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(endpoint, json=saida, headers=headers)
+            response.raise_for_status()  # Levanta um erro para respostas não-sucedidas
+            print(f"\nDados enviados com sucesso para {endpoint}")
+            print(f"Resposta do servidor: {response.status_code} - {response.text}")
+        except requests.exceptions.RequestException as e:
+            print(f"\nErro ao enviar dados para o endpoint: {e}")
 
     except Exception as e:
         print(f"Erro ao processar queimadas: {e}")
