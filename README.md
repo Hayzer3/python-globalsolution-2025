@@ -16,7 +16,7 @@
 
 
 ##  Estrutura do Projeto
-├── monitor_queimadas.py    # Código principal
+├── main.py    # Código principal
 
 ├── dados_queimadas/        # Pasta de dados
 
