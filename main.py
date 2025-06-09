@@ -1,28 +1,52 @@
-# importando as bibliotecas que vamos usar
-import os  # pra trabalhar com pastas e arquivos
-import io  # pra lidar com dados em memória
-import json  # pra trabalhar com arquivos json
-import requests  # pra fazer requisições na internet
-import pandas as pd  # pra trabalhar com tabelas de dados
-import numpy as np  # pra cálculos matemáticos
-from datetime import datetime  # pra trabalhar com datas
-from geopy.geocoders import Nominatim  # pra converter coordenadas em nomes de cidades
-from geopy.exc import GeocoderTimedOut  # pra tratar erros de timeout
-from sklearn.cluster import DBSCAN  # pra agrupar pontos próximos
-from bs4 import BeautifulSoup  # pra ler html de páginas web
+"""
+Monitoramento de Queimadas - INPE
+Script para coletar, processar e classificar dados de focos de incêndio.
+"""
 
-# pasta onde vamos salvar os dados
-download_dir = "dados_queimadas"
-os.makedirs(download_dir, exist_ok=True)  # cria a pasta se não existir
+# 1. IMPORTAÇÕES (agrupadas por categoria)
+# ----------------------------------------
+# Bibliotecas padrão
+import os
+import io
+import json
+from datetime import datetime
 
-# caminho do arquivo json que vai guardar os dados
-json_path = os.path.join(download_dir, "regioes_queimadas.json")
-if not os.path.exists(json_path):  # se o arquivo não existir
-    with open(json_path, "w", encoding="utf-8") as f:  # cria um arquivo vazio
-        json.dump([], f, indent=4, ensure_ascii=False)
+# Bibliotecas de terceiros
+import requests
+import pandas as pd
+import numpy as np
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+from sklearn.cluster import DBSCAN
+from bs4 import BeautifulSoup
 
-# função que pega coordenadas e devolve o nome da cidade
+# 2. CONSTANTES E CONFIGURAÇÕES
+# -----------------------------
+DOWNLOAD_DIR = "dados_queimadas"
+JSON_PATH = os.path.join(DOWNLOAD_DIR, "regioes_queimadas.json")
+API_ENDPOINT = "http://localhost:8080/api/ponto-queimadas/batch"
+API_HEADERS = {"Content-Type": "application/json"}
+
+# 3. FUNÇÕES AUXILIARES (sem dependências entre si)
+# -------------------------------------------------
+def criar_diretorio_se_nao_existir():
+    """Cria o diretório de downloads se não existir"""
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+def inicializar_arquivo_json():
+    """Cria um arquivo JSON vazio se não existir"""
+    if not os.path.exists(JSON_PATH):
+        with open(JSON_PATH, "w", encoding="utf-8") as f:
+            json.dump([], f, indent=4, ensure_ascii=False)
+
+def formatar_data_para_api(data_str):
+    """Converte o formato de data para o padrão ISO 8601 (com 'T')"""
+    return data_str.replace(" ", "T")
+
+# 4. FUNÇÕES PRINCIPAIS (com dependências lógicas)
+# -----------------------------------------------
 def converter_para_municipio(lat, lon):
+    """Converte coordenadas geográficas em nome de município"""
     try:
         # usa o nominatim (openstreetmap) pra achar a cidade
         geolocator = Nominatim(user_agent="monitor_queimadas_v2")
@@ -47,8 +71,8 @@ def converter_para_municipio(lat, lon):
         print(f"erro na geocodificação: {str(e)} | coord: ({lat}, {lon})")
         return "desconhecido"
 
-# função que classifica se a queimada é baixa, média ou alta intensidade
 def classificar_intensidade(coordenadas):
+    """Classifica a intensidade dos focos de queimada"""
     if not coordenadas:  # se não tiver coordenadas
         return []
     coords_array = np.array(coordenadas)
@@ -76,8 +100,8 @@ def classificar_intensidade(coordenadas):
             resultado.append((coord, intensidade))
     return resultado
 
-# pega o link do arquivo mais recente no site do inpe
 def obter_url_ultimo_csv():
+    """Obtém a URL do arquivo CSV mais recente do INPE"""
     url_base = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv/10min/"
     try:
         response = requests.get(url_base)
@@ -89,14 +113,14 @@ def obter_url_ultimo_csv():
         ]
         if not arquivos_csv:
             raise Exception("nenhum arquivo csv encontrado no site do inpe.")
-        ultimo_csv = sorted(arquivos_csv)[-1]  # pega o mais recente
+        ultimo_csv = sorted(arquivos_csv)[-2]  # pega o mais recente
         return url_base + ultimo_csv
     except Exception as e:
         print(f"erro ao obter o link do csv mais recente: {e}")
         return None
 
-# processa os dados de queimadas
 def processar_regioes_queimadas():
+    """Processa os dados principais de queimadas"""
     try:
         print("\nprocessando arquivo de queimadas do inpe...")
         url_csv = obter_url_ultimo_csv()
@@ -117,29 +141,42 @@ def processar_regioes_queimadas():
         for (lat, lon), intensidade in intensidade_lista:
             municipio = converter_para_municipio(lat, lon)  # pega o nome da cidade
             saida.append({
-                "dataqueimada": data_hora_str,
+                "dataQueimada": data_hora_str,
+                "intensidadeQueimada": intensidade,
                 "municipio": municipio,
-                "intensidadequeimada": intensidade,
-                "latitude": lat,
-                "longitude": lon
+                "latitudeQueimada": lat,
+                "longitudeQueimada": lon
             })
         # salva tudo no arquivo json
-        with open(json_path, "w", encoding="utf-8") as f:
+        with open(JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(saida, f, indent=4, ensure_ascii=False)
-        print(f"\njson salvo em: {json_path}")
+        print(f"\njson salvo em: {JSON_PATH}")
         print(json.dumps(saida, indent=4, ensure_ascii=False))
+
+        endpoint = "http://localhost:8080/api/ponto-queimadas/batch"
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(endpoint, json=saida, headers=headers)
+            response.raise_for_status()  # Levanta um erro para respostas não-sucedidas
+            print(f"\nDados enviados com sucesso para {endpoint}")
+            print(f"Resposta do servidor: {response.status_code} - {response.text}")
+        except requests.exceptions.RequestException as e:
+            print(f"\nErro ao enviar dados para o endpoint: {e}")
     except Exception as e:
         print(f"erro ao processar queimadas: {e}")
 
-# mostra o menu pro usuário
+# 5. FUNÇÕES DE INTERFACE (menu e execução)
+# -----------------------------------------
 def exibir_menu():
-    print("\n=== menu do monitor de queimadas ===")
-    print("1. ver regiões com queimadas agora")
-    print("2. sair")
+    """Mostra o menu de opções para o usuário"""
+    print("\n=== Menu do monitor de queimadas ===")
+    print("1. Ver regiões com queimadas nos últimos 10 munitos")
+    print("2. Sair")
 
-# controla o menu
 def executar_menu():
-    while True:  # CORREÇÃO: 'True' com T maiúsculo
+    """Controla o fluxo do programa baseado nas escolhas do usuário"""
+    while True:
         exibir_menu()
         escolha = input("escolha uma opção (1 ou 2): ").strip()
         if escolha == "1":
@@ -150,7 +187,16 @@ def executar_menu():
         else:
             print("opção inválida. tente novamente.")
 
-# inicia o programa
+
+# 6. BLOCO PRINCIPAL
+# ------------------
 if __name__ == "__main__":
-    print("bem-vindo ao monitor de queimadas")
+    # Inicialização
+    criar_diretorio_se_nao_existir()
+    inicializar_arquivo_json()
+
+    # Mensagem de boas-vindas
+    print("Bem-vindo ao Monitor de Queimadas")
+
+    # Iniciar interface
     executar_menu()
