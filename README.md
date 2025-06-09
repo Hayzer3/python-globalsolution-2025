@@ -17,9 +17,13 @@
 
 ##  Estrutura do Projeto
 ├── monitor_queimadas.py    # Código principal
+
 ├── dados_queimadas/        # Pasta de dados
+
 │   ├── queimadas.csv       # Exemplo de arquivo de entrada
+
 │   └── regioes_queimadas.json  # Saída gerada
+
 └── README.md               # Este arquivo
    
 ## Dependências
